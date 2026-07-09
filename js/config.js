@@ -1,5 +1,5 @@
 const CONFIG = {
-  API_URL: "PEGA_AQUI_TU_URL_DE_APPS_SCRIPT",
+  API_URL: "https://script.google.com/macros/s/AKfycbyxRpoLEJN3HGIqnv_yZZiz6ZxByhfgZ3CeL6A9PUgWOY3tgbMX23LlPSFgEq9lgfNi/exec",
   CUARTELES: {
     "1": "1ª Compañía",
     "2": "2ª Compañía Mirasol",
