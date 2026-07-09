@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Control de Cuartel</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #eeeeee;
+      color: #222;
+    }
+
+    header {
+      background: #b30000;
+      color: white;
+      padding: 14px;
+      text-align: center;
+    }
+
+    .entrada {
+      background: white;
+      padding: 15px;
+      text-align: center;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+    }
+
+    .entrada input {
+      width: 90%;
+      max-width: 500px;
+      padding: 16px;
+      font-size: 22px;
+      text-align: center;
+      border-radius: 10px;
+      border: 2px solid #ccc;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 260px 1fr;
+      gap: 15px;
+      padding: 15px;
+    }
+
+    .unidades {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .unidad {
+      background: white;
+      border-radius: 12px;
+      padding: 14px;
+      cursor: pointer;
+      border-left: 10px solid #999;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+    }
+
+    .unidad h3 {
+      margin: 0;
+      font-size: 28px;
+    }
+
+    .unidad.sin-conductor {
+      border-left-color: #d8a600;
+    }
+
+    .unidad.disponible {
+      border-left-color: #179b43;
+    }
+
+    .unidad.fuera-de-servicio {
+      border-left-color: #c40000;
+    }
+
+    .personal {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(145px, 1fr));
+      gap: 15px;
+    }
+
+    .bombero {
+      background: white;
+      border-radius: 14px;
+      text-align: center;
+      padding: 10px;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+    }
+
+    .bombero img {
+      width: 115px;
+      height: 115px;
+      object-fit: cover;
+      border-radius: 50%;
+      border: 5px solid #aaa;
+    }
+
+    .bombero.disponible img {
+      border-color: #179b43;
+    }
+
+    .bombero.no-disponible img {
+      border-color: #c40000;
+    }
+
+    .bombero.en-capacitacion img {
+      border-color: #0066cc;
+    }
+
+    .bombero.en-emergencia img {
+      border-color: #ff7a00;
+    }
+
+    .nombre {
+      font-weight: bold;
+      margin-top: 8px;
+      font-size: 14px;
+    }
+
+    .estado {
+      font-size: 13px;
+      margin-top: 5px;
+    }
+
+    .mensaje {
+      text-align: center;
+      font-weight: bold;
+      padding: 8px;
+    }
+
+    @media (max-width: 800px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+<header>
+  <h1 id="titulo">Control de Cuartel</h1>
+  <div id="hora"></div>
+</header>
+
+<div class="entrada">
+  <input id="inputIngreso" placeholder="Ingrese RUT o Nº Registro y presione ENTER" autofocus>
+</div>
+
+<div id="mensaje" class="mensaje"></div>
+
+<div class="layout">
+  <section class="unidades" id="unidades"></section>
+  <section class="personal" id="personal"></section>
+</div>
+
+<script>
+  const API_URL = "https://script.google.com/macros/s/AKfycbyD7Kp-gcjbpuIPWapimJgDgUHo24glshv75RWK6vUTGxqqrpOZISP6nBxWnbS8KOY/exec";
+  const params = new URLSearchParams(window.location.search);
+  const CUARTEL = params.get("cuartel") || "2";
+
+  document.getElementById("titulo").innerText = "Control Cuartel " + CUARTEL;
+
+  document.getElementById("inputIngreso").addEventListener("keydown", function(e) {
+    if (e.key === "Enter") {
+      registrar();
+    }
+  });
+
+  function reloj() {
+    const ahora = new Date();
+    document.getElementById("hora").innerText = ahora.toLocaleString("es-CL");
+  }
+
+  setInterval(reloj, 1000);
+  reloj();
+
+  async function api(query) {
+    const res = await fetch(API_URL + "?" + query);
+    return await res.json();
+  }
+
+  async function cargarPanel() {
+    const data = await api("action=panel&cuartel=" + encodeURIComponent(CUARTEL));
+
+    if (!data.ok) {
+      mensaje("Error al cargar panel", "red");
+      return;
+    }
+
+    renderUnidades(data.unidades, data.bomberos);
+    renderBomberos(data.bomberos);
+  }
+
+  async function registrar() {
+    const input = document.getElementById("inputIngreso");
+    const valor = input.value.trim();
+
+    if (!valor) return;
+
+    const data = await api(
+      "action=registrar" +
+      "&input=" + encodeURIComponent(valor) +
+      "&cuartel=" + encodeURIComponent(CUARTEL)
+    );
+
+    mensaje(data.mensaje, data.ok ? "green" : "red");
+
+    input.value = "";
+    input.focus();
+
+    cargarPanel();
+  }
+
+  async function cambiarEstadoBombero(registro) {
+    const data = await api(
+      "action=cambiarEstadoBombero" +
+      "&registro=" + encodeURIComponent(registro)
+    );
+
+    mensaje(data.mensaje, data.ok ? "green" : "red");
+    cargarPanel();
+  }
+
+  function renderBomberos(bomberos) {
+    const cont = document.getElementById("personal");
+    cont.innerHTML = "";
+
+    bomberos.forEach(b => {
+      const div = document.createElement("div");
+      div.className = "bombero " + claseEstadoBombero(b.estado);
+      div.onclick = () => cambiarEstadoBombero(b.registro);
+
+      div.innerHTML = `
+        <img src="${b.foto || 'https://via.placeholder.com/150'}">
+        <div class="nombre">${b.nombre}</div>
+        <div class="estado">${b.estado}</div>
+      `;
+
+      cont.appendChild(div);
+    });
+  }
+
+  function renderUnidades(unidades, bomberos) {
+    const cont = document.getElementById("unidades");
+    cont.innerHTML = "";
+
+    unidades.forEach(u => {
+      const div = document.createElement("div");
+      div.className = "unidad " + claseEstadoUnidad(u.estado);
+      div.onclick = () => gestionarUnidad(u, bomberos);
+
+      div.innerHTML = `
+        <h3>${u.unidad}</h3>
+        <strong>${u.estado}</strong><br>
+        Principal: ${u.conductorPrincipal || "-"}<br>
+        Secundario: ${u.conductorSecundario || "-"}
+      `;
+
+      cont.appendChild(div);
+    });
+  }
+
+  async function gestionarUnidad(unidad, bomberos) {
+    if (unidad.estado === "Fuera de servicio") {
+      const activar = confirm("¿Habilitar unidad y dejarla sin conductor?");
+      if (activar) {
+        await api("action=cambiarEstadoUnidad&unidad=" + unidad.unidad + "&estado=Sin conductor");
+        cargarPanel();
+      }
+      return;
+    }
+
+    const opcion = prompt(
+      unidad.unidad + "\n\n" +
+      "1 = Asignar conductor principal\n" +
+      "2 = Asignar conductor secundario\n" +
+      "3 = Quitar conductor principal\n" +
+      "4 = Quitar conductor secundario\n" +
+      "5 = Marcar fuera de servicio"
+    );
+
+    if (opcion === "1" || opcion === "2") {
+      const registro = prompt("Ingrese Nº registro del conductor:");
+      if (!registro) return;
+
+      const tipo = opcion === "1" ? "principal" : "secundario";
+
+      const data = await api(
+        "action=asignarConductor" +
+        "&unidad=" + encodeURIComponent(unidad.unidad) +
+        "&registro=" + encodeURIComponent(registro) +
+        "&tipo=" + encodeURIComponent(tipo)
+      );
+
+      mensaje(data.mensaje, data.ok ? "green" : "red");
+    }
+
+    if (opcion === "3") {
+      await api("action=quitarConductor&unidad=" + unidad.unidad + "&tipo=principal");
+    }
+
+    if (opcion === "4") {
+      await api("action=quitarConductor&unidad=" + unidad.unidad + "&tipo=secundario");
+    }
+
+    if (opcion === "5") {
+      await api("action=cambiarEstadoUnidad&unidad=" + unidad.unidad + "&estado=Fuera de servicio");
+    }
+
+    cargarPanel();
+  }
+
+  function claseEstadoBombero(estado) {
+    if (estado === "Disponible") return "disponible";
+    if (estado === "No disponible") return "no-disponible";
+    if (estado === "En capacitación") return "en-capacitacion";
+    if (estado === "En emergencia") return "en-emergencia";
+    return "";
+  }
+
+  function claseEstadoUnidad(estado) {
+    if (estado === "Disponible") return "disponible";
+    if (estado === "Sin conductor") return "sin-conductor";
+    if (estado === "Fuera de servicio") return "fuera-de-servicio";
+    return "";
+  }
+
+  function mensaje(texto, color) {
+    const div = document.getElementById("mensaje");
+    div.innerText = texto || "";
+    div.style.color = color || "#222";
+    setTimeout(() => div.innerText = "", 4000);
+  }
+
+  cargarPanel();
+  setInterval(cargarPanel, 10000);
+</script>
+
+</body>
+</html>
