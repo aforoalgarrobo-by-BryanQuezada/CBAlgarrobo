@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Control de Cuartel</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="css/panel.css">
+</head>
+<body>
+<header>
+  <div class="titulo" id="titulo">Control de Cuartel</div>
+  <div class="hora" id="hora"></div>
+</header>
+<div class="barra">
+  <input id="inputIngreso" placeholder="Ingrese RUT o Nº Registro y presione ENTER" autofocus>
+  <div class="contador"><div class="contador-num" id="contadorDisponibles">0</div><div class="contador-texto">DISPONIBLES</div></div>
+</div>
+<div id="mensaje" class="mensaje"></div>
+<div class="layout">
+  <section class="unidades" id="unidades"></section>
+  <section class="personal" id="personal"></section>
+</div>
+<div class="modal-fondo" id="modalFondo">
+  <div class="modal">
+    <h2 id="modalTitulo">Unidad</h2>
+    <div class="modal-opciones">
+      <button class="btn btn-verde" onclick="mostrarConductores('principal')">Asignar principal</button>
+      <button class="btn btn-azul" onclick="mostrarConductores('secundario')">Asignar secundario</button>
+      <button class="btn btn-gris" onclick="quitarConductorModal('principal')">Quitar principal</button>
+      <button class="btn btn-gris" onclick="quitarConductorModal('secundario')">Quitar secundario</button>
+      <button class="btn btn-rojo" onclick="marcarFueraServicio()">Fuera de servicio</button>
+      <button class="btn btn-gris" onclick="habilitarSinConductor()">Habilitar sin conductor</button>
+    </div>
+    <div class="lista-conductores" id="listaConductores"></div>
+    <br><button class="btn btn-gris" onclick="cerrarModal()">Cerrar</button>
+  </div>
+</div>
+<script src="js/config.js"></script>
+<script src="js/api.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/panel.js"></script>
+</body>
+</html>
