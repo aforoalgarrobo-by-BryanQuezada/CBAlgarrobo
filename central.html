@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Central - Control de Cuarteles</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #e9ecef;
+      color: #222;
+    }
+
+    header {
+      background: #b40000;
+      color: white;
+      height: 78px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 26px;
+    }
+
+    .titulo {
+      font-size: 28px;
+      font-weight: bold;
+    }
+
+    .hora {
+      font-size: 18px;
+      font-weight: bold;
+    }
+
+    .contenedor {
+      padding: 18px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(330px, 1fr));
+      gap: 18px;
+    }
+
+    .cuartel {
+      background: white;
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+    }
+
+    .cuartel h2 {
+      margin: 0 0 10px;
+      color: #b40000;
+    }
+
+    .resumen {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .dato {
+      flex: 1;
+      background: #f1f1f1;
+      border-radius: 12px;
+      padding: 10px;
+      text-align: center;
+      font-weight: bold;
+    }
+
+    .numero {
+      font-size: 28px;
+      color: #168a3a;
+    }
+
+    .unidad {
+      border-left: 10px solid #999;
+      background: #f7f7f7;
+      border-radius: 12px;
+      padding: 10px;
+      margin-bottom: 10px;
+    }
+
+    .unidad.disponible {
+      border-left-color: #168a3a;
+    }
+
+    .unidad.sin-conductor {
+      border-left-color: #d8a600;
+    }
+
+    .unidad.fuera-de-servicio {
+      border-left-color: #c40000;
+    }
+
+    .unidad strong {
+      font-size: 22px;
+    }
+
+    .estado {
+      font-weight: bold;
+      margin: 4px 0;
+    }
+
+    .conductores {
+      font-size: 13px;
+      line-height: 18px;
+    }
+  </style>
+</head>
+
+<body>
+
+<header>
+  <div class="titulo">Central - Control de Cuarteles</div>
+  <div class="hora" id="hora"></div>
+</header>
+
+<div class="contenedor" id="contenedor"></div>
+
+<script>
+  const API_URL = "https://script.google.com/macros/s/AKfycbzZcK5MX3Qu3hOjh0-Fj9XUS1WcnrzPRDtV8JwrboM9ql5nWdpNVMZcTO-4nXjJiJU/exec";
+
+  const nombresCuartel = {
+    "1": "1ª Compañía",
+    "2": "2ª Compañía Mirasol",
+    "3": "3ª Compañía",
+    "general": "Cuartel General"
+  };
+
+  function reloj() {
+    const ahora = new Date();
+    document.getElementById("hora").innerText = ahora.toLocaleString("es-CL");
+  }
+
+  setInterval(reloj, 1000);
+  reloj();
+
+  async function api(query) {
+    const res = await fetch(API_URL + "?" + query);
+    return await res.json();
+  }
+
+  async function cargarCentral() {
+    const data = await api("action=central");
+
+    if (!data.ok) return;
+
+    const cont = document.getElementById("contenedor");
+    cont.innerHTML = "";
+
+    data.resumen.forEach(c => {
+      const div = document.createElement("div");
+      div.className = "cuartel";
+
+      let unidadesHTML = "";
+
+      c.unidades.forEach(u => {
+        unidadesHTML += `
+          <div class="unidad ${claseEstadoUnidad(u.estado)}">
+            <strong>${u.unidad}</strong>
+            <div class="estado">${u.estado}</div>
+            <div class="conductores">
+              Principal: ${u.principalNombre || "-"}<br>
+              Secundario: ${u.secundarioNombre || "-"}
+            </div>
+          </div>
+        `;
+      });
+
+      div.innerHTML = `
+        <h2>${nombresCuartel[c.cuartel] || c.cuartel}</h2>
+
+        <div class="resumen">
+          <div class="dato">
+            <div class="numero">${c.presentes}</div>
+            Presentes
+          </div>
+          <div class="dato">
+            <div class="numero">${c.disponibles}</div>
+            Disponibles
+          </div>
+        </div>
+
+        ${unidadesHTML || "Sin unidades registradas"}
+      `;
+
+      cont.appendChild(div);
+    });
+  }
+
+  function claseEstadoUnidad(estado) {
+    if (estado === "Disponible") return "disponible";
+    if (estado === "Sin conductor") return "sin-conductor";
+    if (estado === "Fuera de servicio") return "fuera-de-servicio";
+    return "";
+  }
+
+  cargarCentral();
+  setInterval(cargarCentral, 15000);
+</script>
+
+</body>
+</html>
