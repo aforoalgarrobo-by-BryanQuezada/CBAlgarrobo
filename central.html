@@ -35,8 +35,8 @@
 
     .contenedor {
       padding: 18px;
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(330px, 1fr));
+      display: flex;
+      flex-direction: column;
       gap: 18px;
     }
 
@@ -45,6 +45,7 @@
       border-radius: 16px;
       padding: 16px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+      width: 100%;
     }
 
     .cuartel h2 {
