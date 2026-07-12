@@ -365,3 +365,226 @@ header {
     width: calc(100vw - 20px);
   }
 }
+/* =========================================================
+   BOTÓN DE DISPONIBLES
+========================================================= */
+
+button.disponibles-box {
+  border: none;
+  font-family: inherit;
+  cursor: pointer;
+  width: 100%;
+}
+
+button.disponibles-box:hover {
+  filter: brightness(1.07);
+  transform: translateY(-1px);
+}
+
+button.disponibles-box:active {
+  transform: translateY(0);
+}
+
+.presentes-txt {
+  margin-top: 5px;
+  font-size: 12px;
+  opacity: 0.9;
+}
+
+/* =========================================================
+   MODAL DE PERSONAL
+========================================================= */
+
+.modal-fondo {
+  position: fixed;
+  inset: 0;
+
+  background: rgba(0, 0, 0, 0.58);
+
+  display: none;
+  align-items: center;
+  justify-content: center;
+
+  padding: 20px;
+
+  z-index: 200;
+}
+
+.modal-personal {
+  width: min(800px, 96vw);
+  max-height: 86vh;
+
+  background: white;
+
+  border-radius: 18px;
+
+  padding: 20px;
+
+  box-shadow:
+    0 12px 40px rgba(0, 0, 0, 0.4);
+
+  overflow: hidden;
+}
+
+.modal-encabezado {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+
+  gap: 16px;
+
+  padding-bottom: 14px;
+
+  border-bottom: 2px solid #ededed;
+}
+
+.modal-encabezado h2 {
+  margin: 0;
+
+  color: #b40000;
+
+  font-size: 27px;
+}
+
+.modal-resumen {
+  margin-top: 6px;
+
+  color: #555;
+
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.modal-cerrar {
+  width: 42px;
+  height: 42px;
+
+  border: none;
+  border-radius: 50%;
+
+  background: #e7e7e7;
+
+  font-size: 28px;
+  line-height: 36px;
+
+  cursor: pointer;
+}
+
+.modal-cerrar:hover {
+  background: #d7d7d7;
+}
+
+.lista-personal {
+  max-height: calc(86vh - 120px);
+
+  overflow-y: auto;
+
+  padding-top: 14px;
+
+  display: grid;
+  grid-template-columns:
+    repeat(auto-fill, minmax(220px, 1fr));
+
+  gap: 12px;
+}
+
+.persona-item {
+  min-height: 82px;
+
+  background: #f6f6f6;
+
+  border-radius: 13px;
+  border-left: 9px solid #999;
+
+  padding: 10px;
+
+  display: flex;
+  align-items: center;
+
+  gap: 12px;
+}
+
+.persona-item img {
+  width: 60px;
+  height: 60px;
+
+  border-radius: 10px;
+
+  object-fit: cover;
+
+  background: #ddd;
+}
+
+.persona-datos {
+  min-width: 0;
+}
+
+.persona-nombre {
+  font-size: 15px;
+  font-weight: bold;
+}
+
+.persona-cargo {
+  margin-top: 2px;
+
+  color: #666;
+
+  font-size: 12px;
+}
+
+.persona-estado {
+  margin-top: 6px;
+
+  font-size: 13px;
+  font-weight: bold;
+}
+
+.persona-item.disponible {
+  border-left-color: #168a3a;
+}
+
+.persona-item.no-disponible {
+  border-left-color: #c40000;
+}
+
+.persona-item.en-capacitacion {
+  border-left-color: #0066cc;
+}
+
+.persona-item.en-emergencia {
+  border-left-color: #f57c00;
+}
+
+.sin-personal {
+  grid-column: 1 / -1;
+
+  padding: 30px;
+
+  text-align: center;
+
+  color: #666;
+
+  font-weight: bold;
+}
+
+@media (max-width: 600px) {
+  .modal-fondo {
+    padding: 8px;
+  }
+
+  .modal-personal {
+    width: 100%;
+    max-height: 94vh;
+
+    padding: 14px;
+  }
+
+  .lista-personal {
+    grid-template-columns: 1fr;
+    max-height: calc(94vh - 110px);
+  }
+
+  .modal-encabezado h2 {
+    font-size: 22px;
+  }
+}
