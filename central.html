@@ -30,15 +30,52 @@
     ></div>
   </header>
 
+  <!-- Avisos emergentes -->
   <div
     id="toastContainer"
     class="toast-container"
   ></div>
 
-  <main
-    class="contenedor"
-    id="contenedor"
-  ></main>
+  <!-- Contenido principal -->
+  <main class="central-layout">
+
+    <!-- Cuarteles -->
+    <section
+      class="contenedor"
+      id="contenedor"
+    ></section>
+
+    <!-- Historial lateral -->
+    <aside class="historial-panel">
+
+      <div class="historial-encabezado">
+        <div>
+          <h2>Últimos eventos</h2>
+          <span id="historialCantidad">0 eventos</span>
+        </div>
+
+        <button
+          type="button"
+          class="btn-limpiar-historial"
+          onclick="limpiarHistorialVisual()"
+          title="Limpiar visualmente"
+        >
+          Limpiar
+        </button>
+      </div>
+
+      <div
+        id="historialLista"
+        class="historial-lista"
+      >
+        <div class="historial-vacio">
+          No hay eventos recientes.
+        </div>
+      </div>
+
+    </aside>
+
+  </main>
 
   <!-- Modal de personal presente -->
   <div
@@ -48,6 +85,7 @@
     <div class="modal-personal">
 
       <div class="modal-encabezado">
+
         <div>
           <h2 id="modalPersonalTitulo">
             Personal presente
@@ -67,6 +105,7 @@
         >
           ×
         </button>
+
       </div>
 
       <div
