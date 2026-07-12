@@ -5,6 +5,8 @@
 let primeraCargaCentral = true;
 let ultimoEventoVisto = null;
 let centralActualizando = false;
+let ultimoResumenCentral = null;
+let resumenCentralActual = [];
 
 /* =========================================================
    SISTEMA DE AUDIO
@@ -13,11 +15,6 @@ let centralActualizando = false;
 let contextoAudio = null;
 let sonidoHabilitado = false;
 
-/*
- * Los navegadores no permiten reproducir sonidos automáticos
- * hasta que el usuario haga clic o toque la pantalla al menos
- * una vez.
- */
 async function habilitarSonido() {
   if (sonidoHabilitado) {
     return;
@@ -28,7 +25,10 @@ async function habilitarSonido() {
     window.webkitAudioContext;
 
   if (!AudioContext) {
-    console.warn("Este navegador no permite generar sonidos.");
+    console.warn(
+      "Este navegador no permite generar sonidos."
+    );
+
     return;
   }
 
@@ -55,9 +55,6 @@ async function habilitarSonido() {
   }
 }
 
-/*
- * Se activa con el primer clic o toque realizado en la Central.
- */
 document.addEventListener(
   "pointerdown",
   habilitarSonido,
@@ -84,11 +81,9 @@ function reproducirTimbre(tipo = "verde") {
     frecuencias[tipo] ||
     frecuencias.verde;
 
-  const inicio = contextoAudio.currentTime;
+  const inicio =
+    contextoAudio.currentTime;
 
-  /*
-   * Primer tono.
-   */
   crearTono(
     frecuencia,
     inicio,
@@ -96,9 +91,6 @@ function reproducirTimbre(tipo = "verde") {
     0.16
   );
 
-  /*
-   * Segundo tono corto para que suene como timbre.
-   */
   crearTono(
     frecuencia * 1.15,
     inicio + 0.22,
@@ -120,6 +112,7 @@ function crearTono(
     contextoAudio.createGain();
 
   oscilador.type = "sine";
+
   oscilador.frequency.setValueAtTime(
     frecuencia,
     inicio
@@ -144,17 +137,17 @@ function crearTono(
   volumen.connect(contextoAudio.destination);
 
   oscilador.start(inicio);
-  oscilador.stop(inicio + duracion + 0.03);
+
+  oscilador.stop(
+    inicio + duracion + 0.03
+  );
 }
 
 /* =========================================================
-   CARGA DE LA CENTRAL
+   CARGA DE CENTRAL
 ========================================================= */
 
 async function cargarCentral() {
-  /*
-   * Evita que se realicen dos consultas simultáneas.
-   */
   if (centralActualizando) {
     return;
   }
@@ -162,7 +155,9 @@ async function cargarCentral() {
   centralActualizando = true;
 
   try {
-    const data = await api("action=central");
+    const data = await api(
+      "action=central"
+    );
 
     if (!data.ok) {
       mostrarToast(
@@ -174,7 +169,26 @@ async function cargarCentral() {
       return;
     }
 
-    renderCentral(data.resumen);
+    detectarCuartelesSinPersonal(
+      ultimoResumenCentral,
+      data.resumen
+    );
+
+    resumenCentralActual =
+      Array.isArray(data.resumen)
+        ? data.resumen
+        : [];
+
+    renderCentral(
+      resumenCentralActual
+    );
+
+    ultimoResumenCentral =
+      JSON.parse(
+        JSON.stringify(
+          resumenCentralActual
+        )
+      );
 
     await revisarEventos();
 
@@ -195,12 +209,76 @@ async function cargarCentral() {
 }
 
 /* =========================================================
-   DIBUJAR CUARTELES Y UNIDADES
+   ALERTA CUARTEL SIN PERSONAL DISPONIBLE
+========================================================= */
+
+function detectarCuartelesSinPersonal(
+  resumenAnterior,
+  resumenActual
+) {
+  if (
+    !Array.isArray(resumenAnterior) ||
+    !Array.isArray(resumenActual)
+  ) {
+    return;
+  }
+
+  resumenActual.forEach(
+    cuartelActual => {
+      const cuartelAnterior =
+        resumenAnterior.find(
+          item =>
+            String(item.cuartel) ===
+            String(cuartelActual.cuartel)
+        );
+
+      if (!cuartelAnterior) {
+        return;
+      }
+
+      const disponiblesAntes =
+        Number(
+          cuartelAnterior.disponibles || 0
+        );
+
+      const disponiblesAhora =
+        Number(
+          cuartelActual.disponibles || 0
+        );
+
+      /*
+       * Solo alerta cuando pasa desde uno o más
+       * disponibles a cero disponibles.
+       */
+      if (
+        disponiblesAntes > 0 &&
+        disponiblesAhora === 0
+      ) {
+        const nombreCuartel =
+          CONFIG.CUARTELES[
+            cuartelActual.cuartel
+          ] ||
+          cuartelActual.cuartel;
+
+        mostrarToast(
+          `${nombreCuartel} sin personal disponible`,
+          "rojo",
+          true
+        );
+      }
+    }
+  );
+}
+
+/* =========================================================
+   RENDERIZAR CENTRAL
 ========================================================= */
 
 function renderCentral(resumen) {
   const contenedor =
-    document.getElementById("contenedor");
+    document.getElementById(
+      "contenedor"
+    );
 
   if (!contenedor) {
     return;
@@ -212,7 +290,8 @@ function renderCentral(resumen) {
     const fila =
       document.createElement("div");
 
-    fila.className = "fila-cuartel";
+    fila.className =
+      "fila-cuartel";
 
     const unidadesHTML =
       Array.isArray(cuartel.unidades) &&
@@ -229,20 +308,37 @@ function renderCentral(resumen) {
     fila.innerHTML = `
       <div class="nombre-cuartel">
         ${escaparHTML(
-          CONFIG.CUARTELES[cuartel.cuartel] ||
+          CONFIG.CUARTELES[
+            cuartel.cuartel
+          ] ||
           cuartel.cuartel
         )}
       </div>
 
-      <div class="disponibles-box">
+      <button
+        class="disponibles-box"
+        type="button"
+        onclick="abrirModalPersonal('${escaparAtributo(
+          cuartel.cuartel
+        )}')"
+        title="Ver personal presente"
+      >
         <div class="disponibles-num">
-          ${Number(cuartel.disponibles || 0)}
+          ${Number(
+            cuartel.disponibles || 0
+          )}
         </div>
 
         <div class="disponibles-txt">
           DISPONIBLES
         </div>
-      </div>
+
+        <div class="presentes-txt">
+          ${Number(
+            cuartel.presentesCantidad || 0
+          )} presentes
+        </div>
+      </button>
 
       <div class="unidades-linea">
         ${unidadesHTML}
@@ -260,7 +356,9 @@ function crearUnidadHTML(unidad) {
     )}">
 
       <strong>
-        ${escaparHTML(unidad.unidad)}
+        ${escaparHTML(
+          unidad.unidad
+        )}
       </strong>
 
       <div class="estado">
@@ -285,9 +383,191 @@ function crearUnidadHTML(unidad) {
           "-"
         )}
       </div>
+
     </div>
   `;
 }
+
+/* =========================================================
+   MODAL DE PERSONAL PRESENTE
+========================================================= */
+
+function abrirModalPersonal(
+  codigoCuartel
+) {
+  const cuartel =
+    resumenCentralActual.find(
+      item =>
+        String(item.cuartel) ===
+        String(codigoCuartel)
+    );
+
+  if (!cuartel) {
+    mostrarToast(
+      "No se encontró la información del cuartel",
+      "rojo",
+      false
+    );
+
+    return;
+  }
+
+  const nombreCuartel =
+    CONFIG.CUARTELES[
+      codigoCuartel
+    ] ||
+    codigoCuartel;
+
+  const personal =
+    Array.isArray(cuartel.personal)
+      ? cuartel.personal
+      : [];
+
+  const titulo =
+    document.getElementById(
+      "modalPersonalTitulo"
+    );
+
+  const resumen =
+    document.getElementById(
+      "modalPersonalResumen"
+    );
+
+  const lista =
+    document.getElementById(
+      "listaPersonal"
+    );
+
+  titulo.textContent =
+    nombreCuartel;
+
+  resumen.textContent =
+    `${personal.length} presentes · ${Number(
+      cuartel.disponibles || 0
+    )} disponibles`;
+
+  lista.innerHTML = "";
+
+  if (personal.length === 0) {
+    lista.innerHTML = `
+      <div class="sin-personal">
+        No hay personal presente en este cuartel.
+      </div>
+    `;
+
+  } else {
+    const personalOrdenado =
+      [...personal].sort(
+        (a, b) => {
+          const ordenEstado = {
+            "Disponible": 1,
+            "No disponible": 2,
+            "En capacitación": 3,
+            "En emergencia": 4
+          };
+
+          const ordenA =
+            ordenEstado[a.estado] || 99;
+
+          const ordenB =
+            ordenEstado[b.estado] || 99;
+
+          if (ordenA !== ordenB) {
+            return ordenA - ordenB;
+          }
+
+          return String(a.nombre)
+            .localeCompare(
+              String(b.nombre),
+              "es"
+            );
+        }
+      );
+
+    personalOrdenado.forEach(
+      persona => {
+        const item =
+          document.createElement("div");
+
+        item.className =
+          `persona-item ${claseEstadoBombero(
+            persona.estado
+          )}`;
+
+        const foto =
+          persona.foto ||
+          CONFIG.FOTO_DEFAULT;
+
+        item.innerHTML = `
+          <img
+            src="${escaparAtributo(foto)}"
+            alt="${escaparAtributo(
+              persona.nombre
+            )}"
+            onerror="this.src='${escaparAtributo(
+              CONFIG.FOTO_DEFAULT
+            )}'"
+          >
+
+          <div class="persona-datos">
+            <div class="persona-nombre">
+              ${escaparHTML(
+                persona.nombre
+              )}
+            </div>
+
+            <div class="persona-cargo">
+              ${escaparHTML(
+                persona.cargo || ""
+              )}
+            </div>
+
+            <div class="persona-estado">
+              ${escaparHTML(
+                persona.estado
+              )}
+            </div>
+          </div>
+        `;
+
+        lista.appendChild(item);
+      }
+    );
+  }
+
+  document.getElementById(
+    "modalPersonal"
+  ).style.display = "flex";
+}
+
+function cerrarModalPersonal() {
+  document.getElementById(
+    "modalPersonal"
+  ).style.display = "none";
+}
+
+document.addEventListener(
+  "keydown",
+  event => {
+    if (event.key === "Escape") {
+      cerrarModalPersonal();
+    }
+  }
+);
+
+document.getElementById(
+  "modalPersonal"
+).addEventListener(
+  "click",
+  event => {
+    if (
+      event.target.id ===
+      "modalPersonal"
+    ) {
+      cerrarModalPersonal();
+    }
+  }
+);
 
 /* =========================================================
    EVENTOS RECIENTES
@@ -310,39 +590,50 @@ async function revisarEventos() {
     const eventoMasReciente =
       data.eventos[0];
 
-    /*
-     * En la primera carga no mostramos eventos antiguos.
-     * Solo guardamos el último evento existente.
-     */
     if (primeraCargaCentral) {
       ultimoEventoVisto =
-        Number(eventoMasReciente.id);
+        Number(
+          eventoMasReciente.id
+        );
 
       primeraCargaCentral = false;
 
       return;
     }
 
-    const nuevosEventos = data.eventos
-      .filter(evento =>
-        Number(evento.id) >
-        Number(ultimoEventoVisto || 0)
-      )
-      .sort((a, b) =>
-        Number(a.id) -
-        Number(b.id)
-      );
+    const nuevosEventos =
+      data.eventos
+        .filter(
+          evento =>
+            Number(evento.id) >
+            Number(
+              ultimoEventoVisto || 0
+            )
+        )
+        .sort(
+          (a, b) =>
+            Number(a.id) -
+            Number(b.id)
+        );
 
-    nuevosEventos.forEach(evento => {
-      mostrarToast(
-        construirTextoEvento(evento),
-        colorEvento(evento),
-        true
-      );
-    });
+    nuevosEventos.forEach(
+      evento => {
+        mostrarToast(
+          construirTextoEvento(
+            evento
+          ),
+          colorEvento(
+            evento
+          ),
+          true
+        );
+      }
+    );
 
     ultimoEventoVisto =
-      Number(eventoMasReciente.id);
+      Number(
+        eventoMasReciente.id
+      );
 
   } catch (error) {
     console.error(
@@ -352,7 +643,9 @@ async function revisarEventos() {
   }
 }
 
-function construirTextoEvento(evento) {
+function construirTextoEvento(
+  evento
+) {
   const hora = evento.hora
     ? `${evento.hora} · `
     : "";
@@ -365,42 +658,56 @@ function construirTextoEvento(evento) {
   return hora + detalle;
 }
 
-/* =========================================================
-   COLOR DE LOS AVISOS
-========================================================= */
-
 function colorEvento(evento) {
   const tipo =
-    normalizarTexto(evento.tipo);
+    normalizarTexto(
+      evento.tipo
+    );
 
   const detalle =
-    normalizarTexto(evento.detalle);
+    normalizarTexto(
+      evento.detalle
+    );
 
   if (
-    detalle.includes("fuera de servicio") ||
-    tipo.includes("fuera de servicio")
+    detalle.includes(
+      "fuera de servicio"
+    ) ||
+    tipo.includes(
+      "fuera de servicio"
+    )
   ) {
     return "rojo";
   }
 
   if (
     detalle.includes("conductor") ||
-    tipo.includes("asignar conductor") ||
-    tipo.includes("quitar conductor")
+    tipo.includes(
+      "asignar conductor"
+    ) ||
+    tipo.includes(
+      "quitar conductor"
+    )
   ) {
     return "azul";
   }
 
   if (
-    detalle.includes("en emergencia")
+    detalle.includes(
+      "en emergencia"
+    )
   ) {
     return "naranja";
   }
 
   if (
     tipo.includes("salida") ||
-    detalle.includes("salio del cuartel") ||
-    detalle.includes("sin conductor")
+    detalle.includes(
+      "salio del cuartel"
+    ) ||
+    detalle.includes(
+      "sin conductor"
+    )
   ) {
     return "amarillo";
   }
@@ -409,7 +716,7 @@ function colorEvento(evento) {
 }
 
 /* =========================================================
-   AVISOS EMERGENTES
+   AVISOS
 ========================================================= */
 
 function mostrarToast(
@@ -436,12 +743,17 @@ function mostrarToast(
   toast.className =
     `toast ${tipo}`;
 
-  toast.textContent = texto;
+  toast.textContent =
+    texto;
 
-  contenedor.appendChild(toast);
+  contenedor.appendChild(
+    toast
+  );
 
   setTimeout(() => {
-    toast.classList.add("saliendo");
+    toast.classList.add(
+      "saliendo"
+    );
   }, 6000);
 
   setTimeout(() => {
@@ -450,7 +762,7 @@ function mostrarToast(
 }
 
 /* =========================================================
-   FUNCIONES AUXILIARES
+   UTILIDADES
 ========================================================= */
 
 function escaparHTML(valor) {
@@ -460,6 +772,10 @@ function escaparHTML(valor) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
+}
+
+function escaparAtributo(valor) {
+  return escaparHTML(valor);
 }
 
 function normalizarTexto(valor) {
@@ -479,9 +795,6 @@ function normalizarTexto(valor) {
 iniciarReloj();
 cargarCentral();
 
-/*
- * La Central consulta cambios cada cinco segundos.
- */
 setInterval(
   cargarCentral,
   5000
