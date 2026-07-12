@@ -1,21 +1,87 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
   <meta charset="UTF-8">
+
   <title>Central - Control de Cuarteles</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="stylesheet" href="css/central.css">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <link
+    rel="stylesheet"
+    href="css/central.css"
+  >
 </head>
+
 <body>
-<header>
-  <div class="titulo">Central - Control de Cuarteles</div>
-  <div class="hora" id="hora"></div>
-</header>
-<div id="toastContainer" class="toast-container"></div>
-<div class="contenedor" id="contenedor"></div>
-<script src="js/config.js"></script>
-<script src="js/api.js"></script>
-<script src="js/utils.js"></script>
-<script src="js/central.js"></script>
+
+  <header>
+    <div class="titulo">
+      Central - Control de Cuarteles
+    </div>
+
+    <div
+      class="hora"
+      id="hora"
+    ></div>
+  </header>
+
+  <div
+    id="toastContainer"
+    class="toast-container"
+  ></div>
+
+  <main
+    class="contenedor"
+    id="contenedor"
+  ></main>
+
+  <!-- Modal de personal presente -->
+  <div
+    class="modal-fondo"
+    id="modalPersonal"
+  >
+    <div class="modal-personal">
+
+      <div class="modal-encabezado">
+        <div>
+          <h2 id="modalPersonalTitulo">
+            Personal presente
+          </h2>
+
+          <div
+            class="modal-resumen"
+            id="modalPersonalResumen"
+          ></div>
+        </div>
+
+        <button
+          class="modal-cerrar"
+          type="button"
+          onclick="cerrarModalPersonal()"
+          aria-label="Cerrar"
+        >
+          ×
+        </button>
+      </div>
+
+      <div
+        class="lista-personal"
+        id="listaPersonal"
+      ></div>
+
+    </div>
+  </div>
+
+  <script src="js/config.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/central.js"></script>
+
 </body>
+
 </html>
