@@ -36,9 +36,13 @@ async function habilitarSonido() {
   }
 
   try {
-    contextoAudio = new AudioContext();
+    contextoAudio =
+      new AudioContext();
 
-    if (contextoAudio.state === "suspended") {
+    if (
+      contextoAudio.state ===
+      "suspended"
+    ) {
       await contextoAudio.resume();
     }
 
@@ -58,17 +62,15 @@ async function habilitarSonido() {
   }
 }
 
-/*
- * El navegador exige una interacción del usuario
- * antes de permitir audio automático.
- */
 document.addEventListener(
   "pointerdown",
   habilitarSonido,
   { once: true }
 );
 
-function reproducirTimbre(tipo = "verde") {
+function reproducirTimbre(
+  tipo = "verde"
+) {
   if (
     !sonidoHabilitado ||
     !contextoAudio
@@ -141,7 +143,9 @@ function crearTono(
   );
 
   oscilador.connect(volumen);
-  volumen.connect(contextoAudio.destination);
+  volumen.connect(
+    contextoAudio.destination
+  );
 
   oscilador.start(inicio);
 
@@ -219,7 +223,7 @@ async function cargarCentral() {
 }
 
 /* =========================================================
-   ALERTA: CUARTEL SIN PERSONAL DISPONIBLE
+   ALERTA SIN PERSONAL
 ========================================================= */
 
 function detectarCuartelesSinPersonal(
@@ -239,7 +243,9 @@ function detectarCuartelesSinPersonal(
         resumenAnterior.find(
           item =>
             String(item.cuartel) ===
-            String(cuartelActual.cuartel)
+            String(
+              cuartelActual.cuartel
+            )
         );
 
       if (!cuartelAnterior) {
@@ -248,18 +254,16 @@ function detectarCuartelesSinPersonal(
 
       const disponiblesAntes =
         Number(
-          cuartelAnterior.disponibles || 0
+          cuartelAnterior.disponibles ||
+          0
         );
 
       const disponiblesAhora =
         Number(
-          cuartelActual.disponibles || 0
+          cuartelActual.disponibles ||
+          0
         );
 
-      /*
-       * La alerta aparece solo cuando pasa
-       * desde 1 o más disponibles a 0.
-       */
       if (
         disponiblesAntes > 0 &&
         disponiblesAhora === 0
@@ -280,10 +284,13 @@ function detectarCuartelesSinPersonal(
         );
 
         agregarEventoHistorial({
-          id: `alerta-${Date.now()}-${cuartelActual.cuartel}`,
+          id:
+            `alerta-${Date.now()}-` +
+            cuartelActual.cuartel,
           hora: obtenerHoraActual(),
           detalle: texto,
-          tipo: "Alerta sin personal"
+          tipo: "Alerta sin personal",
+          colorForzado: "rojo"
         });
       }
     }
@@ -291,7 +298,7 @@ function detectarCuartelesSinPersonal(
 }
 
 /* =========================================================
-   CENTRAL
+   RENDERIZAR CENTRAL
 ========================================================= */
 
 function renderCentral(resumen) {
@@ -313,12 +320,6 @@ function renderCentral(resumen) {
     fila.className =
       "fila-cuartel";
 
-    /*
-     * Orden:
-     * 1. Disponible
-     * 2. Sin conductor
-     * 3. Fuera de servicio
-     */
     const unidadesOrdenadas =
       ordenarUnidades(
         cuartel.unidades || []
@@ -367,7 +368,9 @@ function renderCentral(resumen) {
           ${Number(
             cuartel.presentesCantidad ||
             (
-              Array.isArray(cuartel.personal)
+              Array.isArray(
+                cuartel.personal
+              )
                 ? cuartel.personal.length
                 : 0
             )
@@ -417,7 +420,7 @@ function ordenarUnidades(unidades) {
 }
 
 /* =========================================================
-   TARJETAS DE UNIDADES
+   UNIDADES
 ========================================================= */
 
 function crearUnidadHTML(unidad) {
@@ -425,21 +428,17 @@ function crearUnidadHTML(unidad) {
     unidad.estado ||
     "Sin conductor";
 
-  const icono =
-    iconoEstadoUnidad(estado);
-
-  const clase =
-    claseEstadoUnidad(estado);
-
   return `
-    <div class="unidad ${clase}">
+    <div class="unidad ${claseEstadoUnidad(
+      estado
+    )}">
 
       <div class="unidad-titulo">
         <span
           class="unidad-icono"
           aria-hidden="true"
         >
-          ${icono}
+          ${iconoEstadoUnidad(estado)}
         </span>
 
         <strong>
@@ -474,16 +473,8 @@ function crearUnidadHTML(unidad) {
 }
 
 function iconoEstadoUnidad(estado) {
-  if (estado === "Disponible") {
-    return "●";
-  }
-
   if (estado === "Sin conductor") {
     return "⚠";
-  }
-
-  if (estado === "Fuera de servicio") {
-    return "●";
   }
 
   return "●";
@@ -543,7 +534,8 @@ function abrirModalPersonal(
     nombreCuartel;
 
   resumen.textContent =
-    `${personal.length} presentes · ${Number(
+    `${personal.length} presentes · ` +
+    `${Number(
       cuartel.disponibles || 0
     )} disponibles`;
 
@@ -586,7 +578,6 @@ function abrirModalPersonal(
           >
 
           <div class="persona-datos">
-
             <div class="persona-nombre">
               ${escaparHTML(
                 persona.nombre
@@ -604,7 +595,6 @@ function abrirModalPersonal(
                 persona.estado
               )}
             </div>
-
           </div>
         `;
 
@@ -619,7 +609,7 @@ function abrirModalPersonal(
 }
 
 function ordenarPersonal(personal) {
-  const ordenEstado = {
+  const ordenEstados = {
     "Disponible": 1,
     "No disponible": 2,
     "En capacitación": 3,
@@ -629,10 +619,10 @@ function ordenarPersonal(personal) {
   return [...personal].sort(
     (a, b) => {
       const ordenA =
-        ordenEstado[a.estado] || 99;
+        ordenEstados[a.estado] || 99;
 
       const ordenB =
-        ordenEstado[b.estado] || 99;
+        ordenEstados[b.estado] || 99;
 
       if (ordenA !== ordenB) {
         return ordenA - ordenB;
@@ -667,9 +657,13 @@ document.addEventListener(
   }
 );
 
-document
-  .getElementById("modalPersonal")
-  .addEventListener(
+const modalPersonal =
+  document.getElementById(
+    "modalPersonal"
+  );
+
+if (modalPersonal) {
+  modalPersonal.addEventListener(
     "click",
     event => {
       if (
@@ -680,9 +674,10 @@ document
       }
     }
   );
+}
 
 /* =========================================================
-   EVENTOS RECIENTES
+   EVENTOS
 ========================================================= */
 
 async function revisarEventos() {
@@ -698,10 +693,6 @@ async function revisarEventos() {
       return;
     }
 
-    /*
-     * Siempre cargamos el historial lateral,
-     * incluso durante la primera carga.
-     */
     cargarHistorialInicial(
       data.eventos
     );
@@ -713,15 +704,9 @@ async function revisarEventos() {
     const eventoMasReciente =
       data.eventos[0];
 
-    /*
-     * En la primera carga no aparecen toast
-     * de eventos antiguos.
-     */
     if (primeraCargaCentral) {
       ultimoEventoVisto =
-        Number(
-          eventoMasReciente.id
-        );
+        Number(eventoMasReciente.id);
 
       primeraCargaCentral = false;
 
@@ -774,23 +759,31 @@ async function revisarEventos() {
   }
 }
 
-function construirTextoEvento(
-  evento
-) {
-  const hora =
-    evento.hora
-      ? `${evento.hora} · `
-      : "";
+function construirTextoEvento(evento) {
+  const hora = evento.hora
+    ? `${evento.hora} · `
+    : "";
 
-  const detalle =
-    evento.detalle ||
-    evento.tipo ||
-    "Nuevo evento";
-
-  return hora + detalle;
+  return hora +
+    (
+      evento.detalle ||
+      evento.tipo ||
+      "Nuevo evento"
+    );
 }
 
+/* =========================================================
+   COLORES DE EVENTOS
+========================================================= */
+
 function colorEvento(evento) {
+  if (
+    evento &&
+    evento.colorForzado
+  ) {
+    return evento.colorForzado;
+  }
+
   const tipo =
     normalizarTexto(
       evento.tipo
@@ -800,6 +793,23 @@ function colorEvento(evento) {
     normalizarTexto(
       evento.detalle
     );
+
+  /*
+   * Alerta sin personal siempre roja.
+   */
+  if (
+    tipo.includes(
+      "alerta sin personal"
+    ) ||
+    detalle.includes(
+      "sin personal disponible"
+    ) ||
+    detalle.includes(
+      "sin personal"
+    )
+  ) {
+    return "rojo";
+  }
 
   if (
     detalle.includes(
@@ -814,6 +824,9 @@ function colorEvento(evento) {
 
   if (
     detalle.includes("conductor") ||
+    detalle.includes(
+      "habilitada automaticamente"
+    ) ||
     tipo.includes(
       "asignar conductor"
     ) ||
@@ -848,10 +861,12 @@ function colorEvento(evento) {
 }
 
 /* =========================================================
-   HISTORIAL LATERAL
+   HISTORIAL
 ========================================================= */
 
-function cargarHistorialInicial(eventos) {
+function cargarHistorialInicial(
+  eventos
+) {
   if (!Array.isArray(eventos)) {
     return;
   }
@@ -953,17 +968,16 @@ function renderHistorial() {
       const item =
         document.createElement("div");
 
-      const tipoColor =
+      const color =
         colorEvento(evento);
 
       item.className =
-        `historial-item ${tipoColor}`;
+        `historial-item ${color}`;
 
       item.innerHTML = `
         <div class="historial-hora">
           ${escaparHTML(
-            evento.hora ||
-            ""
+            evento.hora || ""
           )}
         </div>
 
@@ -987,7 +1001,7 @@ function limpiarHistorialVisual() {
 }
 
 /* =========================================================
-   TOASTS
+   AVISOS EMERGENTES
 ========================================================= */
 
 function mostrarToast(
@@ -1060,14 +1074,15 @@ function normalizarTexto(valor) {
 }
 
 function obtenerHoraActual() {
-  return new Date().toLocaleTimeString(
-    "es-CL",
-    {
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit"
-    }
-  );
+  return new Date()
+    .toLocaleTimeString(
+      "es-CL",
+      {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit"
+      }
+    );
 }
 
 /* =========================================================
