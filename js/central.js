@@ -5,11 +5,14 @@
 let primeraCargaCentral = true;
 let ultimoEventoVisto = null;
 let centralActualizando = false;
+
 let ultimoResumenCentral = null;
 let resumenCentralActual = [];
 
+let historialEventos = [];
+
 /* =========================================================
-   SISTEMA DE AUDIO
+   AUDIO
 ========================================================= */
 
 let contextoAudio = null;
@@ -55,6 +58,10 @@ async function habilitarSonido() {
   }
 }
 
+/*
+ * El navegador exige una interacción del usuario
+ * antes de permitir audio automático.
+ */
 document.addEventListener(
   "pointerdown",
   habilitarSonido,
@@ -144,7 +151,7 @@ function crearTono(
 }
 
 /* =========================================================
-   CARGA DE CENTRAL
+   CARGA PRINCIPAL
 ========================================================= */
 
 async function cargarCentral() {
@@ -169,15 +176,18 @@ async function cargarCentral() {
       return;
     }
 
-    detectarCuartelesSinPersonal(
-      ultimoResumenCentral,
-      data.resumen
-    );
-
-    resumenCentralActual =
+    const resumenNuevo =
       Array.isArray(data.resumen)
         ? data.resumen
         : [];
+
+    detectarCuartelesSinPersonal(
+      ultimoResumenCentral,
+      resumenNuevo
+    );
+
+    resumenCentralActual =
+      resumenNuevo;
 
     renderCentral(
       resumenCentralActual
@@ -209,7 +219,7 @@ async function cargarCentral() {
 }
 
 /* =========================================================
-   ALERTA CUARTEL SIN PERSONAL DISPONIBLE
+   ALERTA: CUARTEL SIN PERSONAL DISPONIBLE
 ========================================================= */
 
 function detectarCuartelesSinPersonal(
@@ -247,8 +257,8 @@ function detectarCuartelesSinPersonal(
         );
 
       /*
-       * Solo alerta cuando pasa desde uno o más
-       * disponibles a cero disponibles.
+       * La alerta aparece solo cuando pasa
+       * desde 1 o más disponibles a 0.
        */
       if (
         disponiblesAntes > 0 &&
@@ -260,18 +270,28 @@ function detectarCuartelesSinPersonal(
           ] ||
           cuartelActual.cuartel;
 
+        const texto =
+          `${nombreCuartel} sin personal disponible`;
+
         mostrarToast(
-          `${nombreCuartel} sin personal disponible`,
+          texto,
           "rojo",
           true
         );
+
+        agregarEventoHistorial({
+          id: `alerta-${Date.now()}-${cuartelActual.cuartel}`,
+          hora: obtenerHoraActual(),
+          detalle: texto,
+          tipo: "Alerta sin personal"
+        });
       }
     }
   );
 }
 
 /* =========================================================
-   RENDERIZAR CENTRAL
+   CENTRAL
 ========================================================= */
 
 function renderCentral(resumen) {
@@ -293,10 +313,20 @@ function renderCentral(resumen) {
     fila.className =
       "fila-cuartel";
 
+    /*
+     * Orden:
+     * 1. Disponible
+     * 2. Sin conductor
+     * 3. Fuera de servicio
+     */
+    const unidadesOrdenadas =
+      ordenarUnidades(
+        cuartel.unidades || []
+      );
+
     const unidadesHTML =
-      Array.isArray(cuartel.unidades) &&
-      cuartel.unidades.length > 0
-        ? cuartel.unidades
+      unidadesOrdenadas.length > 0
+        ? unidadesOrdenadas
             .map(crearUnidadHTML)
             .join("")
         : `
@@ -335,7 +365,12 @@ function renderCentral(resumen) {
 
         <div class="presentes-txt">
           ${Number(
-            cuartel.presentesCantidad || 0
+            cuartel.presentesCantidad ||
+            (
+              Array.isArray(cuartel.personal)
+                ? cuartel.personal.length
+                : 0
+            )
           )} presentes
         </div>
       </button>
@@ -349,23 +384,73 @@ function renderCentral(resumen) {
   });
 }
 
-function crearUnidadHTML(unidad) {
-  return `
-    <div class="unidad ${claseEstadoUnidad(
-      unidad.estado
-    )}">
+function ordenarUnidades(unidades) {
+  const ordenEstados = {
+    "Disponible": 1,
+    "Sin conductor": 2,
+    "Fuera de servicio": 3
+  };
 
-      <strong>
-        ${escaparHTML(
-          unidad.unidad
-        )}
-      </strong>
+  return [...unidades].sort(
+    (a, b) => {
+      const ordenA =
+        ordenEstados[a.estado] || 99;
+
+      const ordenB =
+        ordenEstados[b.estado] || 99;
+
+      if (ordenA !== ordenB) {
+        return ordenA - ordenB;
+      }
+
+      return String(a.unidad || "")
+        .localeCompare(
+          String(b.unidad || ""),
+          "es",
+          {
+            numeric: true,
+            sensitivity: "base"
+          }
+        );
+    }
+  );
+}
+
+/* =========================================================
+   TARJETAS DE UNIDADES
+========================================================= */
+
+function crearUnidadHTML(unidad) {
+  const estado =
+    unidad.estado ||
+    "Sin conductor";
+
+  const icono =
+    iconoEstadoUnidad(estado);
+
+  const clase =
+    claseEstadoUnidad(estado);
+
+  return `
+    <div class="unidad ${clase}">
+
+      <div class="unidad-titulo">
+        <span
+          class="unidad-icono"
+          aria-hidden="true"
+        >
+          ${icono}
+        </span>
+
+        <strong>
+          ${escaparHTML(
+            unidad.unidad
+          )}
+        </strong>
+      </div>
 
       <div class="estado">
-        ${escaparHTML(
-          unidad.estado ||
-          "Sin conductor"
-        )}
+        ${escaparHTML(estado)}
       </div>
 
       <div class="conductores">
@@ -388,8 +473,24 @@ function crearUnidadHTML(unidad) {
   `;
 }
 
+function iconoEstadoUnidad(estado) {
+  if (estado === "Disponible") {
+    return "●";
+  }
+
+  if (estado === "Sin conductor") {
+    return "⚠";
+  }
+
+  if (estado === "Fuera de servicio") {
+    return "●";
+  }
+
+  return "●";
+}
+
 /* =========================================================
-   MODAL DE PERSONAL PRESENTE
+   MODAL DE PERSONAL
 ========================================================= */
 
 function abrirModalPersonal(
@@ -457,32 +558,7 @@ function abrirModalPersonal(
 
   } else {
     const personalOrdenado =
-      [...personal].sort(
-        (a, b) => {
-          const ordenEstado = {
-            "Disponible": 1,
-            "No disponible": 2,
-            "En capacitación": 3,
-            "En emergencia": 4
-          };
-
-          const ordenA =
-            ordenEstado[a.estado] || 99;
-
-          const ordenB =
-            ordenEstado[b.estado] || 99;
-
-          if (ordenA !== ordenB) {
-            return ordenA - ordenB;
-          }
-
-          return String(a.nombre)
-            .localeCompare(
-              String(b.nombre),
-              "es"
-            );
-        }
-      );
+      ordenarPersonal(personal);
 
     personalOrdenado.forEach(
       persona => {
@@ -510,6 +586,7 @@ function abrirModalPersonal(
           >
 
           <div class="persona-datos">
+
             <div class="persona-nombre">
               ${escaparHTML(
                 persona.nombre
@@ -527,6 +604,7 @@ function abrirModalPersonal(
                 persona.estado
               )}
             </div>
+
           </div>
         `;
 
@@ -540,10 +618,44 @@ function abrirModalPersonal(
   ).style.display = "flex";
 }
 
+function ordenarPersonal(personal) {
+  const ordenEstado = {
+    "Disponible": 1,
+    "No disponible": 2,
+    "En capacitación": 3,
+    "En emergencia": 4
+  };
+
+  return [...personal].sort(
+    (a, b) => {
+      const ordenA =
+        ordenEstado[a.estado] || 99;
+
+      const ordenB =
+        ordenEstado[b.estado] || 99;
+
+      if (ordenA !== ordenB) {
+        return ordenA - ordenB;
+      }
+
+      return String(a.nombre || "")
+        .localeCompare(
+          String(b.nombre || ""),
+          "es"
+        );
+    }
+  );
+}
+
 function cerrarModalPersonal() {
-  document.getElementById(
-    "modalPersonal"
-  ).style.display = "none";
+  const modal =
+    document.getElementById(
+      "modalPersonal"
+    );
+
+  if (modal) {
+    modal.style.display = "none";
+  }
 }
 
 document.addEventListener(
@@ -555,19 +667,19 @@ document.addEventListener(
   }
 );
 
-document.getElementById(
-  "modalPersonal"
-).addEventListener(
-  "click",
-  event => {
-    if (
-      event.target.id ===
-      "modalPersonal"
-    ) {
-      cerrarModalPersonal();
+document
+  .getElementById("modalPersonal")
+  .addEventListener(
+    "click",
+    event => {
+      if (
+        event.target.id ===
+        "modalPersonal"
+      ) {
+        cerrarModalPersonal();
+      }
     }
-  }
-);
+  );
 
 /* =========================================================
    EVENTOS RECIENTES
@@ -576,20 +688,35 @@ document.getElementById(
 async function revisarEventos() {
   try {
     const data = await api(
-      "action=eventosRecientes&limite=20"
+      "action=eventosRecientes&limite=30"
     );
 
     if (
       !data.ok ||
-      !Array.isArray(data.eventos) ||
-      data.eventos.length === 0
+      !Array.isArray(data.eventos)
     ) {
+      return;
+    }
+
+    /*
+     * Siempre cargamos el historial lateral,
+     * incluso durante la primera carga.
+     */
+    cargarHistorialInicial(
+      data.eventos
+    );
+
+    if (data.eventos.length === 0) {
       return;
     }
 
     const eventoMasReciente =
       data.eventos[0];
 
+    /*
+     * En la primera carga no aparecen toast
+     * de eventos antiguos.
+     */
     if (primeraCargaCentral) {
       ultimoEventoVisto =
         Number(
@@ -627,6 +754,10 @@ async function revisarEventos() {
           ),
           true
         );
+
+        agregarEventoHistorial(
+          evento
+        );
       }
     );
 
@@ -646,9 +777,10 @@ async function revisarEventos() {
 function construirTextoEvento(
   evento
 ) {
-  const hora = evento.hora
-    ? `${evento.hora} · `
-    : "";
+  const hora =
+    evento.hora
+      ? `${evento.hora} · `
+      : "";
 
   const detalle =
     evento.detalle ||
@@ -716,7 +848,146 @@ function colorEvento(evento) {
 }
 
 /* =========================================================
-   AVISOS
+   HISTORIAL LATERAL
+========================================================= */
+
+function cargarHistorialInicial(eventos) {
+  if (!Array.isArray(eventos)) {
+    return;
+  }
+
+  const idsExistentes =
+    new Set(
+      historialEventos.map(
+        evento =>
+          String(evento.id)
+      )
+    );
+
+  eventos.forEach(evento => {
+    if (
+      !idsExistentes.has(
+        String(evento.id)
+      )
+    ) {
+      historialEventos.push(
+        evento
+      );
+    }
+  });
+
+  historialEventos.sort(
+    (a, b) =>
+      Number(b.id || 0) -
+      Number(a.id || 0)
+  );
+
+  historialEventos =
+    historialEventos.slice(0, 30);
+
+  renderHistorial();
+}
+
+function agregarEventoHistorial(
+  evento
+) {
+  if (!evento) {
+    return;
+  }
+
+  const existe =
+    historialEventos.some(
+      item =>
+        String(item.id) ===
+        String(evento.id)
+    );
+
+  if (!existe) {
+    historialEventos.unshift(
+      evento
+    );
+  }
+
+  historialEventos =
+    historialEventos.slice(0, 30);
+
+  renderHistorial();
+}
+
+function renderHistorial() {
+  const lista =
+    document.getElementById(
+      "historialLista"
+    );
+
+  const cantidad =
+    document.getElementById(
+      "historialCantidad"
+    );
+
+  if (!lista || !cantidad) {
+    return;
+  }
+
+  cantidad.textContent =
+    `${historialEventos.length} ${
+      historialEventos.length === 1
+        ? "evento"
+        : "eventos"
+    }`;
+
+  lista.innerHTML = "";
+
+  if (historialEventos.length === 0) {
+    lista.innerHTML = `
+      <div class="historial-vacio">
+        No hay eventos recientes.
+      </div>
+    `;
+
+    return;
+  }
+
+  historialEventos.forEach(
+    evento => {
+      const item =
+        document.createElement("div");
+
+      const tipoColor =
+        colorEvento(evento);
+
+      item.className =
+        `historial-item ${tipoColor}`;
+
+      item.innerHTML = `
+        <div class="historial-hora">
+          ${escaparHTML(
+            evento.hora ||
+            ""
+          )}
+        </div>
+
+        <div class="historial-detalle">
+          ${escaparHTML(
+            evento.detalle ||
+            evento.tipo ||
+            "Evento"
+          )}
+        </div>
+      `;
+
+      lista.appendChild(item);
+    }
+  );
+}
+
+function limpiarHistorialVisual() {
+  historialEventos = [];
+  renderHistorial();
+}
+
+/* =========================================================
+   TOASTS
 ========================================================= */
 
 function mostrarToast(
@@ -786,6 +1057,17 @@ function normalizarTexto(valor) {
       ""
     )
     .toLowerCase();
+}
+
+function obtenerHoraActual() {
+  return new Date().toLocaleTimeString(
+    "es-CL",
+    {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit"
+    }
+  );
 }
 
 /* =========================================================
