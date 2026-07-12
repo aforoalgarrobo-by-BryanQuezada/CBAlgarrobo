@@ -1,3 +1,35 @@
+let contextoAudio = null;
+let sonidoHabilitado = false;
+
+function habilitarSonido() {
+  if (sonidoHabilitado) return;
+
+  const AudioContext =
+    window.AudioContext ||
+    window.webkitAudioContext;
+
+  if (!AudioContext) {
+    console.warn("Este navegador no permite generar sonidos.");
+    return;
+  }
+
+  contextoAudio = new AudioContext();
+
+  contextoAudio.resume().then(() => {
+    sonidoHabilitado = true;
+    mostrarToast("Sonido de avisos activado", "azul", false);
+  });
+}
+
+/*
+ * Los navegadores exigen que el usuario toque o haga clic
+ * una vez antes de permitir sonidos automáticos.
+ */
+document.addEventListener(
+  "click",
+  habilitarSonido,
+  { once: true }
+);
 let primeraCargaCentral = true;
 let ultimoEventoVisto = null;
 let centralActualizando = false;
@@ -13,6 +45,7 @@ async function cargarCentral() {
     const data = await api("action=central");
 
     if (!data.ok) {
+    
       mostrarToast(
         data.mensaje || "No se pudo cargar la Central",
         "rojo"
@@ -28,10 +61,85 @@ async function cargarCentral() {
   } catch (error) {
     console.error(error);
 
-    mostrarToast(
-      "Sin conexión con la base de datos",
-      "rojo"
-    );
+  function reproducirTimbre(tipo = "verde") {
+  if (!sonidoHabilitado || !contextoAudio) {
+    return;
+  }
+
+  const frecuencias = {
+    verde: 880,
+    azul: 760,
+    amarillo: 620,
+    naranja: 520,
+    rojo: 420
+  };
+
+  const frecuencia =
+    frecuencias[tipo] || frecuencias.verde;
+
+  const oscilador =
+    contextoAudio.createOscillator();
+
+  const volumen =
+    contextoAudio.createGain();
+
+  oscilador.type = "sine";
+  oscilador.frequency.value = frecuencia;
+
+  volumen.gain.setValueAtTime(
+    0.0001,
+    contextoAudio.currentTime
+  );
+
+  volumen.gain.exponentialRampToValueAtTime(
+    0.18,
+    contextoAudio.currentTime + 0.02
+  );
+
+  volumen.gain.exponentialRampToValueAtTime(
+    0.0001,
+    contextoAudio.currentTime + 0.35
+  );
+
+  oscilador.connect(volumen);
+  volumen.connect(contextoAudio.destination);
+
+  oscilador.start();
+  oscilador.stop(
+    contextoAudio.currentTime + 0.38
+  );
+}  
+  function mostrarToast(
+  texto,
+  tipo = "verde",
+  conSonido = true
+) {
+  const contenedor =
+    document.getElementById("toastContainer");
+
+  if (!contenedor) {
+    return;
+  }
+
+  if (conSonido) {
+    reproducirTimbre(tipo);
+  }
+
+  const toast = document.createElement("div");
+
+  toast.className = `toast ${tipo}`;
+  toast.textContent = texto;
+
+  contenedor.appendChild(toast);
+
+  setTimeout(() => {
+    toast.classList.add("saliendo");
+  }, 6000);
+
+  setTimeout(() => {
+    toast.remove();
+  }, 6500);
+}
 
   } finally {
     centralActualizando = false;
